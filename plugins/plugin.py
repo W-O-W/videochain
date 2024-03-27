@@ -1,10 +1,3 @@
-"""
-File Created: Tuesday, 26th March 2024 2:34:25 pm
-Author: zhangli.max (zhangli.max@bigo.com)
------
-Last Modified: Tuesday, 26th March 2024 2:58:41 pm
-Modified By: zhangli.max (zhangli.max@bigo.com)
-"""
 
 import abc
 from core.context import GlobalContext,LocalContext

@@ -1,6 +1,8 @@
-'''
+"""
+
 [SCOPE][COMMAND][DATA][SEP]
-'''
+"""
+
 import asyncio
 class Chunk:
     def __init__(self) -> None:
