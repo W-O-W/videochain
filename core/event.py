@@ -1,12 +1,10 @@
-from typevar import Chunks
-from plugins.plugin import Plugin
 from typing import List
-from abc import ABC
+from dataclasses import dataclass,field
+@dataclass(unsafe_hash=True)
 class Event:
-    id = "EMPTY"
-    description = "do nothing"
-    def __init__(self,limit_scopes = []) -> None:
-        self.limit_scopes = limit_scopes
+    id:str = "EMPTY"
+    description:str = field(default_factory=str,compare=False,hash=False) 
+    limit_scopes:List[str] = field(default_factory=list,compare=False,hash=False) 
 
 class EmptyEvent(Event):
     pass

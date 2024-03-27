@@ -1,11 +1,3 @@
-"""
-File Created: Tuesday, 26th March 2024 3:00:01 pm
-Author: zhangli.max (zhangli.max@bigo.com)
------
-Last Modified: Tuesday, 26th March 2024 3:54:18 pm
-Modified By: zhangli.max (zhangli.max@bigo.com)
-"""
-
 from core.chunk import Chunk, new_none_chunk
 from typing import List
 from core.context import LocalContext, GlobalContext
@@ -16,14 +8,14 @@ from plugins.plugin import (
     GlobalContextPlugin,
 )
 from plugins.demo import BASIC_LLM_PLUGINS
-from agent import FlowAgent, EventAgent
-import time
+from core.agent import FlowAgent, EventAgent
 import logging
-from core.typevar import Events, Chunks, ObserverResponseType
+from core.typevar import Events, Chunks
 from core.tools import flatten_and_dropduplicate
 from core.event import has_final_event
+import asyncio
 
-logging.config.fileConfig('conf/logging.conf')
+# logging.config.fileConfig("conf/logging.conf")
 
 """
 flow:一个具有一定生命周期的流，在生命周期内，通过 invoke 函数进行交互，并提供 checkpoint 功能，类似于消息队列
@@ -43,14 +35,21 @@ invoke chunk 为：中国首都是哪里？
 6. 当没有新的 event 触发或者出发 [FINAL] event 的时候，返回最终的结果
 
 """
+
+
 class Flow:
-    def __init__(self, plugins: List[Plugin] = BASIC_LLM_PLUGINS['QWEN']) -> None:
-        self.context = GlobalContext(
-            [plugin for plugin in plugins if isinstance(plugin, GlobalContextPlugin)]
-        )
+    def __init__(self, plugins: List[Plugin] = BASIC_LLM_PLUGINS["QWEN"]) -> None:
+        self.context = GlobalContext(plugins)
+        for modifier in [
+            plugin.create_global_context_modifier()
+            for plugin in plugins
+            if isinstance(plugin, GlobalContextPlugin)
+        ]:
+            modifier.invoke(self.context)
+
         # 初始化全局上下文和插件
         if not self.context.init():
-            #TODO LOG
+            # TODO LOG
             pass
 
         for plugin in plugins:
@@ -58,18 +57,20 @@ class Flow:
                 # TODO LOG
                 pass
 
-        self.context.GLOBAL_ENABLE_PLUGINS = plugins
-        self.observers = [
-            plugin.create_observer(self.context)
-            for plugin in plugins
-            if isinstance(plugin, ObserverPlugin)
-        ]
+        self.context.global_enable_plugins = plugins
+        self.observers = flatten_and_dropduplicate(
+            [
+                plugin.create_observer(self.context)
+                for plugin in plugins
+                if isinstance(plugin, ObserverPlugin)
+            ]
+        )
         self.event_agent = EventAgent(
             self.context,
             [plugin for plugin in plugins if isinstance(plugin, EventAgentPlugin)],
         )
 
-    def invoke(self, chunk: Chunk) -> Chunks:
+    async def invoke(self, chunk: Chunk) -> Chunks:
         local_context = LocalContext(self.context)
 
         flow_agent = FlowAgent(local_context)
@@ -78,14 +79,12 @@ class Flow:
         response_chunk = new_none_chunk()
         while request_events and not has_final_event(request_events):
             async_chunks = self.notify_all_observers(local_context, request_events)
-            response_chunks = [
-                async_chunk.get()
-                for async_chunk in flatten_and_dropduplicate(async_chunks)
+            response_chunks: List[Chunk] = [
+                await async_chunk
+                for async_chunk in async_chunks
                 if async_chunk is not None
             ]
-            response_chunk = flow_agent.invoke(
-                local_context, [chunk]+response_chunks
-            )
+            response_chunk = flow_agent.invoke(local_context, [chunk] + response_chunks)
             request_events = self.event_agent.invoke(local_context, chunk)
             chunk = response_chunk
 
@@ -93,7 +92,7 @@ class Flow:
 
     def notify_all_observers(
         self, local_context: LocalContext, events: List[Events]
-    ) -> List[ObserverResponseType]:
+    ) -> List:
         async_chunks = []
         events = flatten_and_dropduplicate(events)
         for event in events:
@@ -101,4 +100,4 @@ class Flow:
                 if observer.observe(event):
                     async_chunks.append(observer.invoke(local_context, event))
 
-        return async_chunks
+        return flatten_and_dropduplicate(async_chunks)

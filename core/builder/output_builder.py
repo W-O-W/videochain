@@ -1,3 +1,7 @@
 
+from core.chunk import Chunk
+
+
 class OutputBuilder:
-    pass
+    def match_and_append(self,chunk:Chunk)->bool:
+        return True

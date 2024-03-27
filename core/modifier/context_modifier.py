@@ -1,6 +1,16 @@
 
-class GlobalContextModifier:
-    pass
+from core.context import GlobalContext, LocalContext
+import abc
 
-class LocalContextModifier:
-    pass
+class GlobalContextModifier(abc.ABC):
+    @abc.abstractmethod
+    def invoke(context:GlobalContext):
+        """
+        """
+        
+
+class LocalContextModifier(abc.ABC):
+    @abc.abstractmethod
+    def invoke(context:LocalContext):
+        """
+        """
