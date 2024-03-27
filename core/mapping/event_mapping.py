@@ -1,0 +1,3 @@
+
+class EventMapping:
+    pass
