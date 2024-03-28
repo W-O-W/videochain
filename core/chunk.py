@@ -5,7 +5,7 @@
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import TypeVar,List
+from typing import Any, TypeVar,List
 
 DataType = TypeVar("DataType",str,List[str])
 
@@ -14,6 +14,10 @@ class Chunk:
     scope: str = ""
     command: str = ""
     data: DataType = field(default_factory=str)
+    producer_signals:List[str] = field(default_factory=list,compare=False)
+
+    def to_natural_language(self):
+        return str(self.data)
 
 
 def new_none_chunk():

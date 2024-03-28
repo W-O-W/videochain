@@ -1,4 +1,5 @@
 import abc
+from core.chunk import Chunk
 from core.context import GlobalContext, LocalContext
 from typing import List
 from core.observer.observer import Observer
@@ -22,24 +23,26 @@ class GlobalContextPlugin(Plugin):
 
 class ObserverPlugin(Plugin):
     @abc.abstractmethod
-    def create_observer(self, context: GlobalContext) -> List[Observer]:
+    def create_observers(self, context: GlobalContext) -> List[Observer]:
         """ """
 
 
 class EventAgentPlugin(Plugin):
     @abc.abstractmethod
-    def create_event_mapping(self, context: GlobalContext) -> List[EventMapping]:
+    def create_event_mappings(self, context: GlobalContext) -> List[EventMapping]:
+        """ """
+
+
+class LocalContextPlugin(Plugin):
+    @abc.abstractmethod
+    def create_local_context_modifier(
+        self, context: GlobalContext
+    ) -> LocalContextModifier:
         """ """
 
 
 class FlowAgentPlugin(Plugin):
     pass
-
-
-class LocalContextPlugin(FlowAgentPlugin):
-    @abc.abstractmethod
-    def create_local_context_modifier(self) -> LocalContextModifier:
-        """ """
 
 
 class ApplicationPlugin(FlowAgentPlugin):
@@ -50,5 +53,5 @@ class ApplicationPlugin(FlowAgentPlugin):
 
 class ChunkModifierPlugin(FlowAgentPlugin):
     @abc.abstractmethod
-    def create_chunk_modifier(self, context: LocalContext) -> ChunkModifier:
+    def create_chunk_modifier(self, context: LocalContext,chunk:Chunk) -> ChunkModifier:
         """ """

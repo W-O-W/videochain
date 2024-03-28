@@ -15,11 +15,11 @@ from plugins.plugin import (
 class ChatBot(
     GlobalContextPlugin, EventAgentPlugin, ObserverPlugin, LocalContextPlugin
 ):
-    def create_event_mapping(self, context: GlobalContext) -> List[EventMapping]:
-        return super().create_event_mapping(context)
+    def create_event_mappings(self, context: GlobalContext) -> List[EventMapping]:
+        return super().create_event_mappings(context)
 
-    def create_observer(self, context: GlobalContext) -> List[Observer]:
-        return super().create_observer(context)
+    def create_observers(self, context: GlobalContext) -> List[Observer]:
+        return super().create_observers(context)
 
     def create_global_context_modifier(self) -> GlobalContextModifier:
         return super().create_global_context_modifier()

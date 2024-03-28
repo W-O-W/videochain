@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from core.context import GlobalContext, LocalContext
 from core.modifier.chunk_modifier import ChunkModifier
-from core.typevar import Chunks, Events
-from typing import List,Union
+from core.constants import Chunks, Events
+from typing import List, Union
 from core.event import Event, EmptyEvent
 from core.chunk import Chunk
 from plugins.plugin import (
@@ -15,9 +15,10 @@ from plugins.plugin import (
 from core.mapping.event_mapping import EventMapping
 import asyncio
 
+
 class Agent(metaclass=ABCMeta):
     @abstractmethod
-    def invoke(self, context: LocalContext, chunks: Chunks) -> Union[Events,Chunks]:
+    def invoke(self, context: LocalContext, chunks: Chunks) -> Union[Events, Chunks]:
         """ """
 
 
@@ -27,7 +28,7 @@ class EventAgent(Agent):
         self.event_mapping_list: List[EventMapping] = []
 
         for plugin in plugins:
-            for mapping in plugin.create_event_mapping():
+            for mapping in plugin.create_event_mappings():
                 self.register_mapping(mapping)
 
     def register_mapping(self, mapping: EventMapping):
@@ -37,11 +38,11 @@ class EventAgent(Agent):
         await_events = []
         for mapping in self.event_mapping_list:
             if mapping.is_available(chunk.scope):
-                event = mapping.map(chunk,context)
+                event = mapping.map(chunk, context)
                 await_events.append(event)
-        
+
         await_events_result = await asyncio.gather(*await_events)
-        return_events:List[Event] = []
+        return_events: List[Event] = []
         for event in await_events_result:
             if event is None or event == EmptyEvent():
                 # TODO LOG
@@ -55,15 +56,16 @@ class FlowAgent(Agent):
     def __init__(self, context: LocalContext) -> None:
         super().__init__()
         self.application_plugin: ApplicationPlugin = None
-        self.chunk_modifier_list:List[ChunkModifier] = []
+        self.chunk_modifier_plugins: List[ChunkModifierPlugin] = []
         effect_plugins = set()
 
         # 初始化 local context
         for plugin in context.global_context.global_enable_plugins:
-            if isinstance(plugin, FlowAgentPlugin):
-                if isinstance(plugin, LocalContextPlugin):
-                    plugin.create_local_context_modifier().invoke(context)
-                    effect_plugins.add(plugin)
+            if isinstance(plugin, LocalContextPlugin):
+                plugin.create_local_context_modifier(
+                    context=context.global_context
+                ).invoke(context)
+                effect_plugins.add(plugin)
 
         # 生效不同的 plugins
         for plugin in context.global_context.global_enable_plugins:
@@ -73,9 +75,7 @@ class FlowAgent(Agent):
                     effect_plugins.add(plugin)
 
                 if isinstance(plugin, ChunkModifierPlugin):
-                    self.chunk_modifier_list.append(
-                        plugin.create_chunk_modifier(context)
-                    )
+                    self.chunk_modifier_plugins.append(plugin)
                     effect_plugins.add(plugin)
 
         assert self.application_plugin is not None, "application plugin must enable"
@@ -84,7 +84,6 @@ class FlowAgent(Agent):
         # TODO effect_plugin logs
 
     async def invoke(self, context: LocalContext, chunks: List[Chunk]) -> Chunk:
-        phase = context.phase
         num_built_chunk = 0
         before_chunk = chunks[0]
         fix_chunks = chunks[1:]
@@ -93,12 +92,14 @@ class FlowAgent(Agent):
                 # TODO LOG
                 num_built_chunk += 1
 
+        if self.output_builder.is_completed():
+            # TODO LOG
+            return self.output_builder.build()
+
         return_chunk = before_chunk
-        for modifier in self.chunk_modifier_list:
-            if modifier.is_available(phase):
-                return_chunk = modifier.invoke(
-                    return_chunk,
-                    [chunk for chunk in fix_chunks if modifier.match(chunk)],
-                )
+        for plugin in self.chunk_modifier_plugins:
+            modifier = plugin.create_chunk_modifier(context, return_chunk)
+            if modifier is not None:
+                return_chunk = modifier.invoke(return_chunk, fix_chunks)
                 # TODO LOG
         return return_chunk

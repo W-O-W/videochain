@@ -10,7 +10,7 @@ from plugins.plugin import (
 from plugins.demo import BASIC_LLM_PLUGINS
 from core.agent import FlowAgent, EventAgent
 import logging
-from core.typevar import Events, Chunks
+from core.constants import Events, Chunks
 from core.tools import flatten_and_dropduplicate
 from core.event import has_final_event
 import asyncio
@@ -60,7 +60,7 @@ class Flow:
         self.context.global_enable_plugins = plugins
         self.observers = flatten_and_dropduplicate(
             [
-                plugin.create_observer(self.context)
+                plugin.create_observers(self.context)
                 for plugin in plugins
                 if isinstance(plugin, ObserverPlugin)
             ]
